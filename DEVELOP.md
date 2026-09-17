@@ -201,16 +201,21 @@ git tag v0.1.0 && git push origin v0.1.0
 `teachlab/` 폴더로 넣는다 (약 60KB). PyPI 에 올라가 있지 않아도, 교실 PC 에서
 인터넷이 막혀 있어도 `pip install -r requirements.txt` 한 줄이면 돌아간다.
 
-- 그래서 `.assetsignore` 와 exe 빌드에서 `python/teachlab/` 만 남긴다.
-  통째로 빼면 내보내기가 404 로 실패한다.
-- `python/teachlab/` 에 모듈을 더하면 `lib/pyexport.js` 의 `TEACHLAB_FILES`
-  목록에도 더해야 한다. 안 더하면 내보낸 zip 이 ImportError 로 죽는다.
+소스는 `lib/teachlab_src.js` 에 문자열로 **심어 둔다**. 사이트에서 받아 오지
+않으므로 배포에서 `python/` 을 빼도 안전하다.
 
-  ```bash
-  # 목록과 실제 파일이 맞는지 확인
-  ls python/teachlab/*.py | xargs -n1 basename
-  grep -A4 TEACHLAB_FILES lib/pyexport.js
-  ```
+> 한때 `fetch('./python/teachlab/*.py')` 로 받아 오게 했다가, 배포 쪽에서
+> `python/` 을 빼는 순간 404 로 조용히 깨졌다. 배포 설정에 기대지 말 것.
+
+**파이썬을 고쳤으면 반드시 다시 만든다.**
+
+```bash
+node tools/gen-teachlab-src.mjs          # 다시 만들기
+node tools/gen-teachlab-src.mjs --check  # 최신인지 확인 (CI 가 이걸 돌린다)
+```
+
+안 하면 내보낸 zip 이 옛날 코드를 담는다. `.github/workflows/ci.yml` 이
+푸시마다 확인하므로 잊으면 빨간불이 뜬다.
 
 - **모델 파일 경로를 C++ 런타임에 문자열로 넘기지 말 것.**
   `teachlab/modelfile.py` 의 `read_model()` 로 읽어 바이트를 넘긴다.

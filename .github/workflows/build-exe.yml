@@ -25,15 +25,9 @@ jobs:
       - name: Stage site files
         run: |
           mkdir -p build/site
-          # python/teachlab/*.py 는 남긴다 — 파이썬으로 내보내기가 그 파일들을
-          # 받아 zip 에 담으므로 exe 안에도 있어야 한다 (약 60KB).
           rsync -a \
             --exclude='.git' --exclude='.github' --exclude='tools' --exclude='build' \
-            --exclude='docs' --exclude='design' \
-            --exclude='python/dist' --exclude='python/build' \
-            --exclude='python/pyproject.toml' --exclude='python/MANIFEST.in' \
-            --exclude='python/README.md' --exclude='python/*.egg-info' \
-            --exclude='python/**/__pycache__' \
+            --exclude='docs' --exclude='design' --exclude='python' \
             --exclude='README.md' --exclude='DEVELOP.md' --exclude='CLAUDE.md' \
             --exclude='wrangler.toml' --exclude='.assetsignore' --exclude='_headers' \
             --exclude='.gitignore' --exclude='*.zip' --exclude='*.exe' \
