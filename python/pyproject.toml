@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teachlab"
-version = "0.1.0"
-description = "Teach Lab 에서 가르친 이미지 분류 모델을 파이썬에서 그대로 실행합니다."
+version = "0.2.0"
+description = "Teach Lab 에서 가르친 모델(이미지·손·얼굴·포즈·소리)을 파이썬에서 그대로 실행합니다."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -25,6 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 webcam = ["opencv-python>=4.8"]
+mic = ["sounddevice>=0.4"]
 
 [project.scripts]
 teachlab = "teachlab.cli:main"

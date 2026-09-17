@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
-"""ImageClassifier — 폴더 하나만 주면 바로 맞히기 시작한다."""
+"""Model — 폴더 하나만 주면 바로 맞히기 시작한다.
+
+Teach Lab 이 내보낸 모델은 소스가 다섯 가지다. 무엇으로 배웠는지는
+``model/project.json`` 의 ``source`` 에 적혀 있고, 이 클래스가 그에 맞는
+특징 추출기를 알아서 연다.
+
+  image             사진 → 임베딩 1024
+  hand/face/pose    사진·영상 프레임 → 좌표·표정 점수
+  sound             소리 샘플 → YAMNet 521
+"""
 
 from __future__ import annotations
 
@@ -11,36 +20,37 @@ from typing import Any
 
 import numpy as np
 
+from .audio import SoundEmbedder, read_wav
 from .classifier import Classifier, Prediction
-from .embedder import Embedder
+from .embedder import ImageEmbedder
+from .landmarks import LandmarkExtractor
 from .preprocess import load_rgb
 
-DEFAULT_EMBEDDER = "mobilenet_v3_small_embedder.tflite"
+IMAGE_SOURCE = "image"
+SOUND_SOURCE = "sound"
+LANDMARK_SOURCES = ("hand", "face", "pose")
 
 
-class ImageClassifier:
-    """Teach Lab 이 내보낸 이미지 분류 모델.
+class Model:
+    """Teach Lab 이 내보낸 모델.
 
     쓰는 법::
 
-        from teachlab import ImageClassifier
+        from teachlab import Model
 
-        clf = ImageClassifier("model")
-        result = clf.predict_file("사진.jpg")
-        print(result.label, result.score)
-
-    웹캠 프레임은 ``predict_webcam`` 을 씁니다 — 학습할 때 브라우저 웹캠이
-    거울이었으므로 같은 방향으로 뒤집어 줍니다 (Teachable Machine 과 같은 규칙).
-    사진 파일은 뒤집지 않습니다.
+        m = Model("model")
+        print(m.source)                     # image / hand / face / pose / sound
+        print(m.predict_file("사진.jpg"))    # 사진·좌표 소스
+        print(m.predict_wav("소리.wav"))     # 소리 소스
 
     ``source`` 로 줄 수 있는 것:
-      · 파이썬 내보내기의 ``model/`` 폴더 (임베더 .tflite 가 같이 있다)
-      · 압축을 푼 ``.teachlab.zip`` 폴더 — 이때는 ``embedder=`` 로
-        임베더 .tflite 경로를 따로 알려 준다
-      · ``.teachlab.zip`` 또는 파이썬 내보내기 zip 파일 그대로
+      · 파이썬 내보내기의 ``model/`` 폴더 (특징 추출 모델이 같이 있다)
+      · 압축을 푼 ``.teachlab.zip`` 폴더 — 이때는 ``extractor=`` 로
+        모델 파일(.tflite/.task) 경로를 따로 알려 준다
+      · zip 파일 그대로
     """
 
-    def __init__(self, source: str | Path, embedder: str | Path | None = None):
+    def __init__(self, source: str | Path, extractor: str | Path | None = None):
         folder, self._tempdir = _as_folder(Path(source))
         self.folder = folder
 
@@ -52,51 +62,81 @@ class ImageClassifier:
         self.classifier = Classifier.from_dir(folder)
         self.classes = self.classifier.classes
 
-        emb_cfg = self.project.get("embedder", {}) or {}
-        # 학습할 때 웹캠 프레임을 거울로 썼는지 (predict_webcam 이 이 값을 따른다)
-        self.mirror = bool(emb_cfg.get("mirror", False))
-        emb_path = Path(embedder) if embedder else _find_embedder(folder, emb_cfg)
-        self.embedder = Embedder(
-            emb_path,
-            input_size=int(emb_cfg.get("inputSize", 224)),
-            l2_normalize=bool(emb_cfg.get("l2Normalize", True)),
-            quantize=bool(emb_cfg.get("quantize", False)),
-        )
+        spec = self.project.get("embedder", {}) or {}
+        self.spec = spec
+        self.source = self.project.get("source") or spec.get("source") or IMAGE_SOURCE
+        self.variant = self.project.get("variant") or spec.get("variant")
+        # 학습할 때 웹캠 프레임을 거울로 썼는지 (이미지 소스만 True)
+        self.mirror = bool(spec.get("mirror", False))
+
+        path = Path(extractor) if extractor else _find_extractor(folder, spec, self.source)
+        if self.source == IMAGE_SOURCE:
+            self.extractor = ImageEmbedder(
+                path,
+                input_size=int(spec.get("inputSize", 224)),
+                l2_normalize=bool(spec.get("l2Normalize", True)),
+                quantize=bool(spec.get("quantize", False)),
+            )
+        elif self.source in LANDMARK_SOURCES:
+            self.extractor = LandmarkExtractor(self.source, path, self.variant)
+        elif self.source == SOUND_SOURCE:
+            self.extractor = SoundEmbedder(path, dim=int(spec.get("dim", 521)))
+        else:
+            raise ValueError(f"모르는 소스예요: {self.source}")
+
+    # ── 특징 뽑기 ──
+    def vector(self, data: Any, bgr: bool | None = None, mirror: bool = False,
+               sample_rate: int = 16000) -> np.ndarray | None:
+        """입력 → 특징 벡터. 아무것도 안 잡히면 None (소리·이미지는 항상 값이 있다)."""
+        if self.source == SOUND_SOURCE:
+            return self.extractor.vector(data, sample_rate)
+        rgb = load_rgb(data, bgr=bgr)
+        if self.source == IMAGE_SOURCE:
+            return self.extractor.embed_rgb(rgb, flip=mirror)
+        return self.extractor.vector(rgb)          # 좌표는 원본 프레임에서
 
     # ── 맞히기 ──
-    def embed(self, image: Any, bgr: bool | None = None,
-              mirror: bool = False) -> np.ndarray:
-        """사진 → 임베딩(숫자 1024개)."""
-        return self.embedder.embed_rgb(load_rgb(image, bgr=bgr), flip=mirror)
+    def predict(self, data: Any, bgr: bool | None = None, mirror: bool = False,
+                sample_rate: int = 16000) -> Prediction | None:
+        """한 장(또는 한 토막)을 분류한다. 아무것도 안 보이면 None."""
+        vec = self.vector(data, bgr=bgr, mirror=mirror, sample_rate=sample_rate)
+        if vec is None:
+            return None
+        return self.classifier.predict(vec)
 
-    def predict(self, image: Any, bgr: bool | None = None,
-                mirror: bool = False) -> Prediction:
-        """사진 한 장을 분류한다.
-
-        numpy 배열을 주면 OpenCV 의 BGR 로 본다. RGB 배열이면 ``bgr=False``.
-        웹캠 프레임이면 ``predict_webcam`` 을 쓰세요 (거울을 알아서 맞춥니다).
-        """
-        return self.classifier.predict(self.embed(image, bgr=bgr, mirror=mirror))
-
-    def predict_webcam(self, frame: Any, bgr: bool | None = None) -> Prediction:
-        """웹캠 프레임을 분류한다. 학습할 때와 같은 방향(거울)으로 맞춘다."""
-        return self.predict(frame, bgr=bgr, mirror=self.mirror)
-
-    def predict_file(self, path: str | Path) -> Prediction:
+    def predict_file(self, path: str | Path) -> Prediction | None:
+        """사진 파일 한 장 (이미지·손·얼굴·포즈 소스)."""
         return self.predict(Path(path))
 
-    def predict_proba(self, image: Any, bgr: bool | None = None,
-                      mirror: bool = False) -> np.ndarray:
-        return self.classifier.predict_proba(self.embed(image, bgr=bgr, mirror=mirror))
+    def predict_webcam(self, frame: Any, bgr: bool | None = None) -> Prediction | None:
+        """웹캠 프레임. 학습할 때와 같은 방향(거울)으로 맞춘다.
+
+        이미지 소스만 거울을 건다. 손·얼굴·포즈는 원본 프레임에서 좌표를
+        뽑으므로 뒤집지 않는다 (뒤집으면 왼손/오른손이 반대가 된다).
+        """
+        return self.predict(frame, bgr=bgr, mirror=self.mirror)
+
+    def predict_audio(self, samples: Any, sample_rate: int = 16000) -> Prediction | None:
+        """모노 float32 샘플 한 토막 (소리 소스). 1초 정도가 좋다."""
+        return self.predict(samples, sample_rate=sample_rate)
+
+    def predict_wav(self, path: str | Path) -> Prediction | None:
+        """wav 파일 (소리 소스)."""
+        samples, rate = read_wav(path)
+        return self.predict_audio(samples, rate)
+
+    def predict_proba(self, data: Any, **kw) -> np.ndarray | None:
+        vec = self.vector(data, **kw)
+        return None if vec is None else self.classifier.predict_proba(vec)
 
     # ── 정리 ──
     def close(self) -> None:
-        self.embedder.close()
+        self.extractor.close()
         if self._tempdir is not None:
             self._tempdir.cleanup()
             self._tempdir = None
 
-    def __enter__(self) -> "ImageClassifier":
+    def __enter__(self) -> "Model":
         return self
 
     def __exit__(self, *exc) -> None:
@@ -105,7 +145,12 @@ class ImageClassifier:
     def __repr__(self) -> str:
         acc = self.project.get("accuracy")
         tail = f", accuracy={acc:.2f}" if isinstance(acc, (int, float)) else ""
-        return f"ImageClassifier(classes={self.classes!r}{tail})"
+        var = f", variant={self.variant!r}" if self.variant else ""
+        return f"Model(source={self.source!r}{var}, classes={self.classes!r}{tail})"
+
+
+# 예전 이름 (이미지 전용이던 시절). 지금은 다섯 소스를 모두 다룬다.
+ImageClassifier = Model
 
 
 def _as_folder(source: Path) -> tuple[Path, tempfile.TemporaryDirectory | None]:
@@ -133,15 +178,23 @@ def _as_folder(source: Path) -> tuple[Path, tempfile.TemporaryDirectory | None]:
     raise FileNotFoundError(f"zip 안에서 classifier.json 을 찾지 못했어요: {source}")
 
 
-def _find_embedder(folder: Path, emb_cfg: dict) -> Path:
-    names = [emb_cfg.get("file"), DEFAULT_EMBEDDER]
-    for name in names:
+_FALLBACK = {
+    "image": "mobilenet_v3_small_embedder.tflite",
+    "hand": "hand_landmarker.task",
+    "face": "face_landmarker.task",
+    "pose": "pose_landmarker_lite.task",
+    "sound": "yamnet.tflite",
+}
+
+
+def _find_extractor(folder: Path, spec: dict, source: str) -> Path:
+    for name in (spec.get("file"), _FALLBACK.get(source)):
         if name and (folder / name).exists():
             return folder / name
-    found = sorted(folder.glob("*.tflite"))
+    found = sorted(folder.glob("*.tflite")) + sorted(folder.glob("*.task"))
     if found:
         return found[0]
     raise FileNotFoundError(
-        "임베더 .tflite 를 찾지 못했어요. 파이썬 내보내기의 model/ 폴더를 쓰거나,\n"
-        "ImageClassifier(폴더, embedder='...tflite') 처럼 경로를 알려 주세요."
+        "특징 추출 모델(.tflite/.task)을 찾지 못했어요. 파이썬 내보내기의 model/ 폴더를\n"
+        "쓰거나, Model(폴더, extractor='...') 처럼 경로를 알려 주세요."
     )

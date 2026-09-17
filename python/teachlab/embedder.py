@@ -14,7 +14,7 @@ import numpy as np
 from .preprocess import crop_to
 
 
-class Embedder:
+class ImageEmbedder:
     """MediaPipe ImageEmbedder 감싸기. 한 번 만들어 두고 계속 쓴다."""
 
     def __init__(self, model_path: str | Path, input_size: int = 224,
@@ -53,8 +53,12 @@ class Embedder:
         except Exception:                             # 이미 닫혔으면 넘어간다
             pass
 
-    def __enter__(self) -> "Embedder":
+    def __enter__(self) -> "ImageEmbedder":
         return self
 
     def __exit__(self, *exc) -> None:
         self.close()
+
+
+# 예전 이름
+Embedder = ImageEmbedder
