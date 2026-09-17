@@ -37,6 +37,8 @@ def _cmd_info(args: argparse.Namespace) -> int:
         print(f"특징 뽑기 : {Path(m.spec.get('file', '?')).name} → {m.classifier.input_dim}개 숫자")
         if m.source == "image":
             print(f"웹캠 거울 : {'켬' if m.mirror else '끔'}")
+        if m.source == SOUND_SOURCE:
+            print(f"소리 특징 : {m.sound_transform}")
     return 0
 
 
@@ -108,8 +110,10 @@ def _cmd_listen(args: argparse.Namespace) -> int:
         return 1
     import numpy as np
 
+    from .audio import WINDOW_SECONDS
+
     rate = 16000
-    window = int(rate * 1.0)              # 브라우저와 같은 1초 창
+    window = int(round(WINDOW_SECONDS * rate))   # 브라우저와 같은 창 (0.975초)
     hop = int(rate * 0.25)
 
     with Model(args.model) as m:

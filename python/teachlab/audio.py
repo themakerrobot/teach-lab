@@ -18,7 +18,27 @@ from .modelfile import read_model
 
 SOUND_DIM = 521
 SAMPLE_RATE = 16000
-WINDOW_SECONDS = 1.0
+
+# YAMNet 한 창의 길이. 16000(1초)이 아니라 15600(0.975초)이다.
+# 1초를 통째로 넣으면 MediaPipe 가 창을 둘로 쪼개고, 둘째 창은 0으로 채운
+# 꼬리라 늘 "Silence" 가 1등이 된다. 브라우저(lib/sound.js)도 같은 길이를 쓴다.
+WINDOW_SAMPLES = 15600
+WINDOW_SECONDS = WINDOW_SAMPLES / SAMPLE_RATE
+
+# ── 소리 특징 다듬기 (브라우저 lib/sources.js 와 같은 식) ──
+# YAMNet 점수는 sigmoid 출력이라 대부분 0 근처에 몰려 있고 값도 작다.
+# 제곱근으로 펴 주고 L2 로 크기를 맞추면 훨씬 잘 갈린다.
+# 옛 모델은 날것으로 배웠으므로 project.json 의 featureTransform 을 따른다.
+SOUND_TRANSFORM = "sqrt-l2"
+
+
+def apply_transform(vec: np.ndarray, kind: str = SOUND_TRANSFORM) -> np.ndarray:
+    """521개 점수를 학습할 때와 같은 방식으로 다듬는다."""
+    if kind != "sqrt-l2":                 # "raw" 또는 옛 모델
+        return vec
+    out = np.sqrt(np.maximum(vec, 0.0, dtype=np.float32))
+    n = float(np.linalg.norm(out)) or 1.0
+    return (out / n).astype(np.float32)
 
 
 class SoundEmbedder:
@@ -47,16 +67,24 @@ class SoundEmbedder:
         )
         self._task = mp_audio.AudioClassifier.create_from_options(options)
 
-    def vector(self, samples, sample_rate: int = SAMPLE_RATE) -> np.ndarray | None:
-        """모노 float32 샘플 → 521차원. 창이 여러 개면 마지막 것을 쓴다."""
+    def _trim(self, samples, sample_rate: int):
+        """창 하나가 되도록 뒤에서 0.975초만 잘라 낸다."""
         buf = np.asarray(samples, dtype=np.float32).reshape(-1)
+        want = int(round(WINDOW_SECONDS * sample_rate))
+        if buf.size > want:
+            buf = buf[-want:]
+        return np.ascontiguousarray(buf)
+
+    def vector(self, samples, sample_rate: int = SAMPLE_RATE) -> np.ndarray | None:
+        """모노 float32 샘플 → 521차원. 창이 여러 개면 첫 창을 쓴다."""
+        buf = self._trim(samples, sample_rate)
         if buf.size == 0:
             return None
         audio = self._containers.AudioData.create_from_array(buf, sample_rate)
         results = self._task.classify(audio)
         if not results:
             return None
-        categories = results[-1].classifications[0].categories
+        categories = results[0].classifications[0].categories
         vec = np.zeros(self.dim, dtype=np.float32)
         for c in categories:
             if 0 <= c.index < self.dim:
@@ -65,12 +93,12 @@ class SoundEmbedder:
 
     def top(self, samples, sample_rate: int = SAMPLE_RATE, n: int = 8):
         """지금 들리는 소리 이름 상위 n개 — 눈으로 확인할 때 쓴다."""
-        buf = np.asarray(samples, dtype=np.float32).reshape(-1)
+        buf = self._trim(samples, sample_rate)
         audio = self._containers.AudioData.create_from_array(buf, sample_rate)
         results = self._task.classify(audio)
         if not results:
             return []
-        cats = sorted(results[-1].classifications[0].categories,
+        cats = sorted(results[0].classifications[0].categories,
                       key=lambda c: c.score, reverse=True)[:n]
         return [(c.category_name, float(c.score)) for c in cats]
 

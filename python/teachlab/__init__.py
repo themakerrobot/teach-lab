@@ -11,7 +11,7 @@
 클라우드로 나가는 것은 없습니다 — 전부 이 기기 안에서 돕니다.
 """
 
-from .audio import SoundEmbedder, read_wav
+from .audio import SOUND_TRANSFORM, SoundEmbedder, apply_transform, read_wav
 from .classifier import Classifier, Prediction
 from .embedder import Embedder, ImageEmbedder
 from .landmarks import LandmarkExtractor
@@ -21,6 +21,7 @@ __all__ = [
     "Model", "ImageClassifier",
     "Classifier", "Prediction",
     "ImageEmbedder", "Embedder", "LandmarkExtractor", "SoundEmbedder", "read_wav",
+    "apply_transform", "SOUND_TRANSFORM",
     "__version__",
 ]
-__version__ = "0.3.1"
+__version__ = "0.4.0"

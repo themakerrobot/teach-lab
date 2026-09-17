@@ -20,7 +20,7 @@ from typing import Any
 
 import numpy as np
 
-from .audio import SoundEmbedder, read_wav
+from .audio import SOUND_TRANSFORM, SoundEmbedder, apply_transform, read_wav
 from .classifier import Classifier, Prediction
 from .embedder import ImageEmbedder
 from .landmarks import LandmarkExtractor
@@ -68,6 +68,8 @@ class Model:
         self.variant = self.project.get("variant") or spec.get("variant")
         # 학습할 때 웹캠 프레임을 거울로 썼는지 (이미지 소스만 True)
         self.mirror = bool(spec.get("mirror", False))
+        # 소리 점수를 어떻게 다듬어 배웠는지 (옛 모델은 날것)
+        self.sound_transform = spec.get("featureTransform", "raw")
 
         path = Path(extractor) if extractor else _find_extractor(folder, spec, self.source)
         if self.source == IMAGE_SOURCE:
@@ -89,7 +91,8 @@ class Model:
                sample_rate: int = 16000) -> np.ndarray | None:
         """입력 → 특징 벡터. 아무것도 안 잡히면 None (소리·이미지는 항상 값이 있다)."""
         if self.source == SOUND_SOURCE:
-            return self.extractor.vector(data, sample_rate)
+            vec = self.extractor.vector(data, sample_rate)
+            return None if vec is None else apply_transform(vec, self.sound_transform)
         rgb = load_rgb(data, bgr=bgr)
         if self.source == IMAGE_SOURCE:
             return self.extractor.embed_rgb(rgb, flip=mirror)
