@@ -208,18 +208,52 @@ git tag v0.1.0 && git push origin v0.1.0
 - `requirements.txt` 에는 소스별로 실제 필요한 것만 적는다 (`REQUIREMENTS`).
   이미지는 LiteRT, 나머지는 MediaPipe.
 
-## 파이썬 패키지 배포
+## 파이썬 패키지 배포 (PyPI)
+
+GitHub Actions 로 올립니다 — **토큰을 레포에 두지 않습니다.**
+PyPI 의 Trusted Publishing(OIDC)을 쓰기 때문에, PyPI 쪽에 "이 레포의 이
+워크플로" 를 한 번만 등록해 두면 그 뒤로는 자격증명이 오가지 않습니다.
+
+### 처음 한 번만 (pypi.org 에서)
+
+1. <https://pypi.org/manage/account/publishing/> → **Add a new pending publisher**
+2. 아래 그대로 입력
+
+   | 칸 | 값 |
+   |---|---|
+   | PyPI Project Name | `teachlab` |
+   | Owner | `themakerrobot` |
+   | Repository name | `teach-lab` |
+   | Workflow name | `publish-pypi.yml` |
+   | Environment name | `pypi` |
+
+3. TestPyPI 로 먼저 연습하려면 <https://test.pypi.org/manage/account/publishing/>
+   에 같은 내용으로 하나 더 등록하고 Environment 는 `testpypi` 로 둡니다.
+
+### 올리기
+
+```bash
+# 1. 버전 올리기 — 두 곳을 같이 고친다
+#    python/pyproject.toml  ·  python/teachlab/__init__.py
+# 2. 커밋·푸시한 뒤
+git tag py-v0.3.0 && git push origin py-v0.3.0
+```
+
+Actions 탭에서 **Run workflow** 로 수동 실행도 됩니다 (`testpypi` / `pypi` 선택).
+exe 빌드는 `v*` 태그, 파이썬 패키지는 `py-v*` 태그로 갈라 두었습니다.
+
+같은 버전 번호는 PyPI 에 두 번 올릴 수 없습니다. 올리기 전에 버전을 올릴 것.
+
+### 로컬에서 빌드만
 
 ```bash
 cd python
 python -m build          # dist/teachlab-<ver>-py3-none-any.whl + .tar.gz
 python -m twine check dist/*
-python -m twine upload dist/*     # PyPI 토큰 필요
 ```
 
-버전은 `pyproject.toml` 과 `teachlab/__init__.py` 두 곳에 있습니다.
-내보낸 zip 의 `requirements.txt` 가 `teachlab>=<ver>` 를 가리키므로
-`lib/pyexport.js` 의 버전도 같이 올려야 합니다.
+내보낸 zip 은 `teachlab/` 소스를 품고 있어서 PyPI 배포와 무관하게 돌아갑니다
+(바로 위 절 참고). PyPI 배포는 `pip install teachlab` 로 쓰고 싶은 사람을 위한 것입니다.
 
 ## 화면 캡처 (docs/manual)
 
