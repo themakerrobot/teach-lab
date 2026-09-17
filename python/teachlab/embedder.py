@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """임베더 — MediaPipe ImageEmbedder 로 사진을 1024개의 숫자로 바꾼다.
 
-브라우저(Teach Lab)와 같은 .tflite 파일, 같은 옵션(l2_normalize=True)을 쓴다.
-그래서 같은 사진을 넣으면 사실상 같은 숫자가 나온다.
+브라우저(Teach Lab)와 같은 .tflite 파일, 같은 옵션(l2_normalize=True),
+같은 전처리(Teachable Machine 의 cropTo)를 쓴다.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .preprocess import center_crop_square
+from .preprocess import crop_to
 
 
 class Embedder:
@@ -37,9 +37,9 @@ class Embedder:
         )
         self._embedder = mp_vision.ImageEmbedder.create_from_options(options)
 
-    def embed_rgb(self, rgb: np.ndarray) -> np.ndarray:
-        """RGB uint8 배열 → float32 임베딩. 자르기·줄이기는 여기서 한다."""
-        square = center_crop_square(rgb, self.input_size)
+    def embed_rgb(self, rgb: np.ndarray, flip: bool = False) -> np.ndarray:
+        """RGB uint8 배열 → float32 임베딩. 자르기·줄이기·거울은 여기서 한다."""
+        square = crop_to(rgb, self.input_size, flip)
         image = self._mp.Image(image_format=self._mp.ImageFormat.SRGB,
                                data=np.ascontiguousarray(square))
         result = self._embedder.embed(image)

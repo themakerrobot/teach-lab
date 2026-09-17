@@ -53,12 +53,12 @@
         <select class="inp" id="camSel" style="cursor:pointer"></select>
       </div>
 
+      <video id="camVid" playsinline muted></video>
       <div id="camBox">
-        <video id="camVid" playsinline muted></video>
-        <div id="cropBox"></div>
+        <canvas id="camCv" width="224" height="224"></canvas>
         <div id="camOff"><i class="fa-solid fa-video-slash fa-2x"></i><span>카메라가 꺼져 있어요</span></div>
       </div>
-      <div class="privnote">찍은 사진은 이 컴퓨터 밖으로 나가지 않아요</div>
+      <div class="privnote">여기 보이는 그대로 AI가 배워요. 사진은 이 컴퓨터 밖으로 나가지 않아요</div>
 
       <div class="selinfo" id="selInfo">종류를 골라 주세요</div>
       <button class="db go" id="capBtn" disabled><i class="fa-solid fa-camera-retro"></i> 꾹 눌러서 예시 모으기</button>
@@ -66,12 +66,9 @@
       <input type="file" id="fileInput" accept="image/*" multiple>
 
       <div id="seeWrap">
-        <div id="seeHead"><i class="fa-solid fa-eye"></i>AI가 보는 그림
+        <div id="seeHead"><i class="fa-solid fa-table-list"></i>AI가 보는 숫자
           <span class="st-badge" id="seeState">아직 안 봐요</span></div>
-        <div id="seeBody">
-          <canvas id="seeCv" width="224" height="224"></canvas>
-          <div id="seeNums"><span class="ph2">카메라를 켜면 숫자가 나와요</span></div>
-        </div>
+        <div id="seeNums"><span class="ph2">카메라를 켜면 숫자가 나와요</span></div>
         <div class="hint" style="margin-top:5px">AI는 사진을 1024개의 숫자로 바꿔서 봐요.</div>
       </div>
     </div>

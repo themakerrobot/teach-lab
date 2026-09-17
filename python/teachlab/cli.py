@@ -28,6 +28,7 @@ def _cmd_info(args: argparse.Namespace) -> int:
             print(f"맞힌 비율 : {acc * 100:.1f}%")
         print(f"임베더    : {clf.embedder.model_path.name} "
               f"({clf.classifier.input_dim}개 숫자, {clf.embedder.input_size}px)")
+        print(f"웹캠 거울 : {'켬' if clf.mirror else '끔'}")
     return 0
 
 
@@ -60,7 +61,7 @@ def _cmd_webcam(args: argparse.Namespace) -> int:
                 ok, frame = cap.read()
                 if not ok:
                     break
-                result = clf.predict(frame)           # BGR ndarray 를 그대로
+                result = clf.predict_webcam(frame)    # BGR ndarray 를 그대로 (거울 자동)
                 label = result.label if result.score >= args.threshold else "모르겠어요"
                 text = f"{label} {result.score * 100:.0f}%"
                 if show:

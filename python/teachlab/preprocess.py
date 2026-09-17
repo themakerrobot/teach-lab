@@ -1,12 +1,21 @@
 # -*- coding: utf-8 -*-
 """사진 전처리 — 브라우저와 똑같이 자르고 줄인다.
 
-Teach Lab 은 브라우저에서 "가운데를 정사각형으로 잘라 224×224 로 줄인 그림"
-을 임베더에 넣는다. 파이썬에서도 같은 답이 나오려면 같은 순서를 지켜야 한다.
+Teachable Machine 의 cropTo (@teachablemachine/image, src/utils/canvas.ts) 를
+그대로 옮긴 것이다. Teach Lab 브라우저 쪽(lib/embedder.js)도 같은 순서를 쓴다.
+
+  1. 짧은 변이 size 가 되도록 전체를 같은 비율로 줄인다 (찌그러뜨리지 않는다)
+  2. 가운데 size×size 만 남긴다
+  3. 웹캠 프레임이면 좌우를 뒤집는다 (거울)
+
+거울은 웹캠에만 건다. 사진 파일은 뒤집지 않는다 — TM 도 마찬가지로
+Webcam(w, h, flip=True) 이 찍을 때 한 번만 걸고, predict(image) 의 기본값은
+flipped=False 다.
 """
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -89,29 +98,49 @@ def _decode_bytes(data: bytes) -> np.ndarray:
     raise RuntimeError("사진을 읽으려면 opencv-python 또는 Pillow 가 필요합니다.")
 
 
-def center_crop_square(rgb: np.ndarray, size: int) -> np.ndarray:
-    """가운데를 정사각형으로 자르고 size×size 로 줄인다 (찌그러뜨리지 않는다)."""
-    h, w = rgb.shape[:2]
-    side = min(h, w)
-    top = (h - side) // 2
-    left = (w - side) // 2
-    cropped = rgb[top:top + side, left:left + side]
+def crop_to(rgb: np.ndarray, size: int, flip: bool = False) -> np.ndarray:
+    """Teachable Machine 의 cropTo 와 같은 결과를 만든다.
 
-    if side == size:
-        return np.ascontiguousarray(cropped)
+    먼저 짧은 변을 size 에 맞춰 전체를 줄이고, 그다음 가운데를 잘라 낸다.
+    (자르고 줄이는 게 아니라 줄이고 자르는 순서다 — 반올림까지 TM 과 맞춘다.)
+    """
+    h, w = rgb.shape[:2]
+    if not h or not w:
+        raise ValueError("빈 사진이에요.")
+
+    scale = size / min(w, h)
+    scaled_w = math.ceil(w * scale)
+    scaled_h = math.ceil(h * scale)
+
+    resized = _resize(rgb, scaled_w, scaled_h)
+
+    dx = scaled_w - size
+    dy = scaled_h - size
+    left = dx // 2
+    top = dy // 2
+    out = resized[top:top + size, left:left + size]
+
+    if flip:
+        out = out[:, ::-1]
+    return np.ascontiguousarray(out)
+
+
+def _resize(rgb: np.ndarray, width: int, height: int) -> np.ndarray:
+    if (width, height) == (rgb.shape[1], rgb.shape[0]):
+        return rgb
 
     if cv2 is not None:
         # INTER_LINEAR 를 쓴다. 브라우저 캔버스(drawImage)의 축소와 가장 가깝다 —
         # 같은 사진에서 임베딩 코사인 유사도가 0.99 언저리로 나온다.
         # (INTER_AREA 는 화질은 좋지만 브라우저와 덜 맞는다)
-        return np.ascontiguousarray(cv2.resize(cropped, (size, size),
-                                               interpolation=cv2.INTER_LINEAR))
+        return cv2.resize(rgb, (width, height), interpolation=cv2.INTER_LINEAR)
 
     if _PILImage is not None:
         # Pillow 의 BILINEAR 은 축소할 때 필터 폭을 늘려 결과가 꽤 달라진다.
         # 줄일 때는 BOX 가 브라우저 쪽에 더 가깝다.
-        resample = _PILImage.BOX if side > size else _PILImage.BILINEAR
-        im = _PILImage.fromarray(cropped).resize((size, size), resample)
+        shrinking = width < rgb.shape[1] or height < rgb.shape[0]
+        resample = _PILImage.BOX if shrinking else _PILImage.BILINEAR
+        im = _PILImage.fromarray(rgb).resize((width, height), resample)
         return np.asarray(im, dtype=np.uint8)
 
     raise RuntimeError("사진을 줄이려면 opencv-python 또는 Pillow 가 필요합니다.")

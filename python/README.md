@@ -51,9 +51,24 @@ import cv2
 
 cap = cv2.VideoCapture(0)
 ok, frame = cap.read()
-print(clf.predict(frame))             # BGR 로 봅니다
+print(clf.predict_webcam(frame))      # 웹캠 — BGR, 거울 자동
+print(clf.predict(frame))             # 거울 없이 그대로
 print(clf.predict(rgb_array, bgr=False))
 ```
+
+## 거울(좌우 반전)
+
+Teach Lab 은 Teachable Machine 과 같이 **웹캠 화면을 거울로 두고 학습**합니다
+(TM 의 `Webcam(w, h, flip=true)`). 그래서 웹캠 프레임은 같은 방향으로 뒤집어야
+맞습니다.
+
+| 입력 | 쓸 메서드 | 거울 |
+|---|---|---|
+| 웹캠(노트북·USB 카메라) | `predict_webcam(frame)` | `project.json` 의 `embedder.mirror` 를 따름 |
+| 사진 파일 | `predict_file(path)` / `predict(img)` | 안 걸음 |
+| 로봇 카메라처럼 거울이 아닌 화면 | `predict(frame)` | 안 걸음 |
+
+좌우가 다른 것(글자·화살표·한쪽으로 기울인 물건)을 맞힐 때 차이가 납니다.
 
 zip 파일을 그대로 열 수도 있습니다.
 
@@ -71,7 +86,7 @@ clf = ImageClassifier("과일맞히기.teachlab.zip",
 ## 명령줄
 
 ```bash
-teachlab info    model
+teachlab info    model                      # 종류·정확도·웹캠 거울 여부
 teachlab predict model 사진.jpg -v
 teachlab webcam  model --threshold 0.7
 teachlab webcam  model --no-window          # 화면 없는 라즈베리파이에서
@@ -92,19 +107,24 @@ while True:
     ok, frame = cap.read()
     if not ok:
         break
-    r = clf.predict(frame)
+    r = clf.predict_webcam(frame)
     if r.score >= 0.6:
         print(r.label)
 ```
 
+파이보처럼 **거울이 아닌 카메라**에 올릴 때는 `clf.predict(frame)` 을 쓰세요.
+
 ## 왜 답이 같나요
 
 브라우저와 파이썬이 **같은 순서**로 처리하기 때문입니다.
+순서는 Teachable Machine 의 `cropTo` (`@teachablemachine/image`,
+`src/utils/canvas.ts`) 를 그대로 옮긴 것입니다.
 
-1. 가운데를 정사각형으로 자른다 (찌그러뜨리지 않는다)
-2. 224×224 로 줄인다
-3. MediaPipe ImageEmbedder(`l2_normalize=True`)로 1024개 숫자를 뽑는다
-4. Dense(64, relu) → Dense(N, softmax) 를 numpy 로 계산한다
+1. 짧은 변이 224 가 되도록 전체를 줄인다 (찌그러뜨리지 않는다)
+2. 가운데 224×224 만 남긴다
+3. 웹캠 프레임이면 좌우를 뒤집는다 (사진 파일은 안 뒤집는다)
+4. MediaPipe ImageEmbedder(`l2_normalize=True`)로 1024개 숫자를 뽑는다
+5. Dense(64, relu) → Dense(N, softmax) 를 numpy 로 계산한다
 
 브라우저 캔버스와 OpenCV 의 축소 보간이 완전히 같지는 않습니다. 실제로 재어 보면
 임베딩의 코사인 유사도가 **0.99 언저리**, 확률은 1~2%p 안에서 다릅니다.

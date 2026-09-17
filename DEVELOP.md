@@ -70,17 +70,42 @@ python/              PyPI 패키지 `teachlab`
 ## 파이프라인
 
 ```
-카메라/사진 → 가운데 정사각형 자르기 → 224×224
-           → MediaPipe ImageEmbedder (l2Normalize) → 1024차원
+카메라/사진 → cropTo(224, flip) → MediaPipe ImageEmbedder (l2Normalize) → 1024차원
            → Dense(64, relu) → Dropout(0.2) → Dense(N, softmax)
 ```
 
-- 자르기 방식(`center-crop-square`)은 브라우저와 파이썬이 **같아야 한다.**
-  바꾸면 `python/teachlab/preprocess.py` 도 같이 바꿔야 한다.
+전처리(`cropTo`)는 **Teachable Machine 것을 그대로 옮겼다**
+(`@teachablemachine/image`, `src/utils/canvas.ts`).
+
+1. 짧은 변이 224 가 되도록 전체를 줄인다 (찌그러뜨리지 않는다)
+2. 가운데 224×224 만 남긴다
+3. 웹캠이면 좌우를 뒤집는다 — TM 의 `Webcam(w, h, flip=true)` 과 같다
+
+- **거울은 웹캠에만 건다.** 사진 파일은 안 뒤집는다. TM 도 같다:
+  거울은 `Webcam` 클래스가 찍을 때 한 번 걸고, `predict(image, flipped=false)`
+  가 기본이다.
+- 거울을 걸고 학습했으므로 파이썬 쪽도 웹캠 프레임은 뒤집어야 맞는다.
+  `project.json` 의 `embedder.mirror` 가 그 표시이고, `predict_webcam()` 이
+  그 값을 따른다. 파이보처럼 거울이 아닌 카메라는 `predict()` 를 쓴다.
+- 화면 미리보기는 잘라 낸 정사각형 캔버스(`#camCv`)를 그대로 보여 준다.
+  `<video>` 는 원본일 뿐이라 화면에 붙이지 않는다 — TM 이 `webcam.canvas` 를
+  붙여 보여 주는 것과 같다. **보이는 것이 곧 학습 입력이다.**
+- 자르기·거울을 바꾸면 `python/teachlab/preprocess.py` 도 같이 바꿔야 한다.
 - 축소 보간은 브라우저 캔버스 기본값에 맞춰 파이썬에서 `cv2.INTER_LINEAR` 를 쓴다
   (같은 사진에서 임베딩 코사인 유사도 약 0.99).
 - 임베딩이 1024차원이라 학습 곱셈이 sense-lab 보다 훨씬 많다.
   그래서 TF.js 백엔드는 `webgl` 먼저, 실패하면 `cpu` 로 내려간다.
+
+### Teachable Machine 과 다른 점
+
+전처리·거울은 TM 과 같게 맞췄고, 아래 둘만 다르다.
+
+| | Teachable Machine | Teach Lab |
+|---|---|---|
+| 임베더 | MobileNet v2 (tfjs), 1280차원, 입력 [-1,1] | MediaPipe MobileNetV3-Small, 1024차원, l2 정규화 |
+| 헤드 | Dense(denseUnits, relu) → Dense(N, softmax, useBias=false) | Dense(64, relu) → Dropout(0.2) → Dense(N, softmax) |
+
+임베더는 CLAUDE.md 가 정한 것이다 (sense-lab 과 같은 MediaPipe 스택).
 
 ## 저장 형식
 
