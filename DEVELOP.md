@@ -154,8 +154,22 @@ pip install -e .
 teachlab info <파이썬내보내기>/model
 ```
 
-`mediapipe` 가 `libEGL`·`libGLESv2` 를 dlopen 합니다. 헤드리스 리눅스에서는
-`libegl1 libgles2 libglx0` 를 설치해야 임포트됩니다.
+**기본 설치를 가볍게 유지할 것.** 이미지 모델은 `.tflite` 를 LiteRT 로 직접
+돌린다 (`teachlab/embedder.py`). MediaPipe 를 쓰지 않는 이유는 무게다.
+
+| | 받는 것 | 대략 |
+|---|---|---|
+| 기본 (이미지) | numpy · Pillow · ai-edge-litert | 110MB |
+| `[landmark]` `[sound]` | + mediapipe (opencv-contrib·matplotlib 동반) | 800MB |
+
+- MediaPipe ImageEmbedder 가 이 모델에 쓰는 정규화는 `x / 255` 다.
+  LiteRT 로 같은 값을 넣으면 임베딩이 **완전히 같다** (코사인 1.000000).
+  바꾸기 전에 반드시 다시 재 볼 것.
+- 축소 보간은 numpy 로 직접 짠 쌍선형(`preprocess.resize_bilinear`)을 쓴다.
+  브라우저 캔버스의 기본 축소와 같은 격자라 OpenCV·Pillow 없이도 맞는다.
+- `mediapipe` 는 `libEGL`·`libGLESv2` 를 dlopen 한다. 헤드리스 리눅스에서
+  `[landmark]`/`[sound]` 를 쓰려면 `libegl1 libgles2 libglx0` 가 필요하다.
+- TensorFlow 는 설치하지 않는다 (LiteRT 는 TFLite 런타임만 담고 있다).
 
 배포는 `python/` 에서 빌드해 PyPI 에 올립니다 (패키지명 `teachlab`).
 
@@ -166,3 +180,36 @@ teachlab info <파이썬내보내기>/model
 - 배포 명령: `npx wrangler deploy`
 - 캐시 버스팅: 코드 파일만 `?v=N`. 모델·wasm 파일에는 붙이지 않습니다
 - 모든 자산 경로는 상대경로 — 하위 경로(`/teach-lab/`) 서빙에서도 동작합니다
+
+## 오프라인 exe (자매 서비스와 동일)
+
+`v*` 태그를 푸시하면 GitHub Actions 가 사이트 전체를 담은 단일
+`TeachLab.exe` 를 빌드해 Release 에 첨부합니다 (인터넷 없이 동작).
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+- 구성: `.github/workflows/build-exe.yml` + `tools/portable/` (Go embed 서버)
+- 서버는 `.wasm`/`.task`/`.tflite`/`.mjs` MIME 을 명시 등록합니다
+- Actions 탭에서 workflow_dispatch 로 수동 빌드도 가능합니다
+- 사이트가 약 66MB 라 exe 는 약 75MB 가 됩니다 (모델·wasm 이 대부분)
+
+## 파이썬 패키지 배포
+
+```bash
+cd python
+python -m build          # dist/teachlab-<ver>-py3-none-any.whl + .tar.gz
+python -m twine check dist/*
+python -m twine upload dist/*     # PyPI 토큰 필요
+```
+
+버전은 `pyproject.toml` 과 `teachlab/__init__.py` 두 곳에 있습니다.
+내보낸 zip 의 `requirements.txt` 가 `teachlab>=<ver>` 를 가리키므로
+`lib/pyexport.js` 의 버전도 같이 올려야 합니다.
+
+## 화면 캡처 (docs/manual)
+
+설명서 그림은 실제 웹캠 없이 만듭니다. 가짜 카메라에 합성 장면(Y4M)을
+넣고 Playwright 로 찍은 뒤, 번호 배지를 그려 넣습니다.
+장면과 번호 위치를 바꾸려면 캡처 스크립트를 다시 돌리세요.

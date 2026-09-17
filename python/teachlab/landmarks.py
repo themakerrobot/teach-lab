@@ -52,9 +52,15 @@ class LandmarkExtractor:
     def __init__(self, source: str, model_path: str | Path, variant: str | None = None):
         if source not in SOURCES:
             raise ValueError(f"좌표를 뽑을 수 없는 소스예요: {source}")
-        import mediapipe as mp
-        from mediapipe.tasks import python as mp_python
-        from mediapipe.tasks.python import vision as mp_vision
+        try:
+            import mediapipe as mp
+            from mediapipe.tasks import python as mp_python
+            from mediapipe.tasks.python import vision as mp_vision
+        except ImportError as e:                       # pragma: no cover
+            raise ImportError(
+                "손·얼굴·포즈 모델을 돌리려면 MediaPipe 가 필요해요:\n"
+                "    pip install \"teachlab[landmark]\""
+            ) from e
 
         self._mp = mp
         self.source = source

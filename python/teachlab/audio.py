@@ -23,9 +23,15 @@ class SoundEmbedder:
     """MediaPipe AudioClassifier(YAMNet) 감싸기."""
 
     def __init__(self, model_path: str | Path, dim: int = SOUND_DIM):
-        from mediapipe.tasks import python as mp_python
-        from mediapipe.tasks.python import audio as mp_audio
-        from mediapipe.tasks.python.components import containers
+        try:
+            from mediapipe.tasks import python as mp_python
+            from mediapipe.tasks.python import audio as mp_audio
+            from mediapipe.tasks.python.components import containers
+        except ImportError as e:                       # pragma: no cover
+            raise ImportError(
+                "소리 모델을 돌리려면 MediaPipe 가 필요해요:\n"
+                "    pip install \"teachlab[sound]\""
+            ) from e
 
         self._containers = containers
         self.model_path = Path(model_path)

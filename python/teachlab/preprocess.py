@@ -11,25 +11,31 @@ Teachable Machine 의 cropTo (@teachablemachine/image, src/utils/canvas.ts) 를
 거울은 웹캠에만 건다. 사진 파일은 뒤집지 않는다 — TM 도 마찬가지로
 Webcam(w, h, flip=True) 이 찍을 때 한 번만 걸고, predict(image) 의 기본값은
 flipped=False 다.
+
+줄이기는 numpy 로 직접 한다. OpenCV·Pillow 의 축소 필터는 저마다 달라서
+브라우저 캔버스와 어긋나는데, 캔버스(drawImage)의 기본 축소는 안티에일리어싱
+없는 평범한 **쌍선형 보간**이라 몇 줄이면 그대로 맞출 수 있다. 덕분에 무거운
+이미지 라이브러리에 기대지 않아도 된다.
 """
 
 from __future__ import annotations
 
+import io
 import math
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-try:                                  # mediapipe 가 opencv 를 함께 설치한다
-    import cv2
-except ImportError:                   # 없으면 Pillow 로 대신한다
-    cv2 = None
-
-try:
+try:                                  # 파일을 읽을 때만 쓴다 (jpg·png 디코딩)
     from PIL import Image as _PILImage
 except ImportError:
     _PILImage = None
+
+try:                                  # 있으면 쓰고, 없어도 된다
+    import cv2
+except ImportError:
+    cv2 = None
 
 
 def load_rgb(source: Any, bgr: bool | None = None) -> np.ndarray:
@@ -42,10 +48,10 @@ def load_rgb(source: Any, bgr: bool | None = None) -> np.ndarray:
       · bytes (파일 내용 그대로)
     """
     if isinstance(source, (str, Path)):
-        return _read_file(Path(source))
+        return _decode(Path(source).read_bytes(), Path(source))
 
     if isinstance(source, (bytes, bytearray)):
-        return _decode_bytes(bytes(source))
+        return _decode(bytes(source), None)
 
     if _PILImage is not None and isinstance(source, _PILImage.Image):
         return np.asarray(source.convert("RGB"), dtype=np.uint8)
@@ -68,34 +74,16 @@ def load_rgb(source: Any, bgr: bool | None = None) -> np.ndarray:
     raise TypeError(f"사진으로 쓸 수 없는 값입니다: {type(source)!r}")
 
 
-def _read_file(path: Path) -> np.ndarray:
-    if not path.exists():
-        raise FileNotFoundError(f"사진을 찾지 못했어요: {path}")
-    if cv2 is not None:
-        # 한글 경로에서도 열리도록 바이트로 읽어 디코드한다
-        data = np.fromfile(str(path), dtype=np.uint8)
-        img = cv2.imdecode(data, cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError(f"사진을 읽지 못했어요: {path}")
-        return np.ascontiguousarray(img[:, :, ::-1])
+def _decode(data: bytes, path: Path | None) -> np.ndarray:
     if _PILImage is not None:
-        with _PILImage.open(path) as im:
+        with _PILImage.open(io.BytesIO(data)) as im:
             return np.asarray(im.convert("RGB"), dtype=np.uint8)
-    raise RuntimeError("사진을 읽으려면 opencv-python 또는 Pillow 가 필요합니다.")
-
-
-def _decode_bytes(data: bytes) -> np.ndarray:
     if cv2 is not None:
         img = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
         if img is None:
-            raise ValueError("사진을 읽지 못했어요.")
+            raise ValueError(f"사진을 읽지 못했어요: {path or '(메모리)'}")
         return np.ascontiguousarray(img[:, :, ::-1])
-    if _PILImage is not None:
-        import io
-
-        with _PILImage.open(io.BytesIO(data)) as im:
-            return np.asarray(im.convert("RGB"), dtype=np.uint8)
-    raise RuntimeError("사진을 읽으려면 opencv-python 또는 Pillow 가 필요합니다.")
+    raise RuntimeError("사진 파일을 읽으려면 Pillow 가 필요해요:  pip install pillow")
 
 
 def crop_to(rgb: np.ndarray, size: int, flip: bool = False) -> np.ndarray:
@@ -112,12 +100,10 @@ def crop_to(rgb: np.ndarray, size: int, flip: bool = False) -> np.ndarray:
     scaled_w = math.ceil(w * scale)
     scaled_h = math.ceil(h * scale)
 
-    resized = _resize(rgb, scaled_w, scaled_h)
+    resized = resize_bilinear(rgb, scaled_w, scaled_h)
 
-    dx = scaled_w - size
-    dy = scaled_h - size
-    left = dx // 2
-    top = dy // 2
+    left = (scaled_w - size) // 2
+    top = (scaled_h - size) // 2
     out = resized[top:top + size, left:left + size]
 
     if flip:
@@ -125,22 +111,30 @@ def crop_to(rgb: np.ndarray, size: int, flip: bool = False) -> np.ndarray:
     return np.ascontiguousarray(out)
 
 
-def _resize(rgb: np.ndarray, width: int, height: int) -> np.ndarray:
-    if (width, height) == (rgb.shape[1], rgb.shape[0]):
+def resize_bilinear(rgb: np.ndarray, width: int, height: int) -> np.ndarray:
+    """안티에일리어싱 없는 쌍선형 보간 — 브라우저 캔버스(drawImage)와 같은 방식.
+
+    표본 위치는 픽셀 가운데를 기준으로 잡는다: src = (dst + 0.5) * 비율 - 0.5.
+    (OpenCV 의 INTER_LINEAR 과 같은 격자다.)
+    """
+    h, w = rgb.shape[:2]
+    if (width, height) == (w, h):
         return rgb
 
-    if cv2 is not None:
-        # INTER_LINEAR 를 쓴다. 브라우저 캔버스(drawImage)의 축소와 가장 가깝다 —
-        # 같은 사진에서 임베딩 코사인 유사도가 0.99 언저리로 나온다.
-        # (INTER_AREA 는 화질은 좋지만 브라우저와 덜 맞는다)
-        return cv2.resize(rgb, (width, height), interpolation=cv2.INTER_LINEAR)
+    x = (np.arange(width, dtype=np.float32) + 0.5) * (w / width) - 0.5
+    y = (np.arange(height, dtype=np.float32) + 0.5) * (h / height) - 0.5
+    np.clip(x, 0, w - 1, out=x)
+    np.clip(y, 0, h - 1, out=y)
 
-    if _PILImage is not None:
-        # Pillow 의 BILINEAR 은 축소할 때 필터 폭을 늘려 결과가 꽤 달라진다.
-        # 줄일 때는 BOX 가 브라우저 쪽에 더 가깝다.
-        shrinking = width < rgb.shape[1] or height < rgb.shape[0]
-        resample = _PILImage.BOX if shrinking else _PILImage.BILINEAR
-        im = _PILImage.fromarray(rgb).resize((width, height), resample)
-        return np.asarray(im, dtype=np.uint8)
+    x0 = np.floor(x).astype(np.int32)
+    y0 = np.floor(y).astype(np.int32)
+    x1 = np.minimum(x0 + 1, w - 1)
+    y1 = np.minimum(y0 + 1, h - 1)
+    wx = (x - x0)[None, :, None]
+    wy = (y - y0)[:, None, None]
 
-    raise RuntimeError("사진을 줄이려면 opencv-python 또는 Pillow 가 필요합니다.")
+    src = rgb.astype(np.float32)
+    top = src[y0[:, None], x0[None, :]] * (1 - wx) + src[y0[:, None], x1[None, :]] * wx
+    bottom = src[y1[:, None], x0[None, :]] * (1 - wx) + src[y1[:, None], x1[None, :]] * wx
+    out = top * (1 - wy) + bottom * wy
+    return np.clip(out + 0.5, 0, 255).astype(np.uint8)
