@@ -195,6 +195,19 @@ git tag v0.1.0 && git push origin v0.1.0
 - Actions 탭에서 workflow_dispatch 로 수동 빌드도 가능합니다
 - 사이트가 약 66MB 라 exe 는 약 75MB 가 됩니다 (모델·wasm 이 대부분)
 
+## 내보낸 zip 이 PyPI 없이 도는 이유
+
+`파이썬으로 내보내기` 는 `python/teachlab/*.py` 를 그대로 받아 zip 안에
+`teachlab/` 폴더로 넣는다 (약 60KB). PyPI 에 올라가 있지 않아도, 교실 PC 에서
+인터넷이 막혀 있어도 `pip install -r requirements.txt` 한 줄이면 돌아간다.
+
+- 그래서 `.assetsignore` 와 exe 빌드에서 `python/teachlab/` 만 남긴다.
+  통째로 빼면 내보내기가 404 로 실패한다.
+- `python/teachlab/` 에 모듈을 더하면 `lib/pyexport.js` 의 `TEACHLAB_FILES`
+  목록에도 더해야 한다.
+- `requirements.txt` 에는 소스별로 실제 필요한 것만 적는다 (`REQUIREMENTS`).
+  이미지는 LiteRT, 나머지는 MediaPipe.
+
 ## 파이썬 패키지 배포
 
 ```bash

@@ -9,3 +9,6 @@
 # 모델 파일은 스트리밍으로 받아 간다 — 잘못된 타입이면 로드가 실패한다.
 /*.tflite
   Content-Type: application/octet-stream
+# 파이썬 내보내기가 받아 가는 teachlab 소스
+/python/teachlab/*
+  Content-Type: text/plain; charset=utf-8
