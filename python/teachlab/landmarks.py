@@ -23,6 +23,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .modelfile import read_model
+
 SOURCES = ("hand", "face", "pose")
 
 DIMS = {
@@ -66,11 +68,10 @@ class LandmarkExtractor:
         self.source = source
         self.variant = variant or DEFAULT_VARIANT[source]
         self.model_path = Path(model_path)
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"모델 파일을 찾지 못했어요: {self.model_path}")
         self.dim = dim_of(source, self.variant)
 
-        base = mp_python.BaseOptions(model_asset_path=str(self.model_path))
+        # 경로가 아니라 바이트로 넘긴다 — 한글 경로에서 깨지지 않게
+        base = mp_python.BaseOptions(model_asset_buffer=read_model(self.model_path))
         mode = mp_vision.RunningMode.IMAGE
         if source == "hand":
             options = mp_vision.HandLandmarkerOptions(

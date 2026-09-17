@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
+from .modelfile import read_model
 from .preprocess import crop_to
 
 # MediaPipe ImageEmbedder 가 이 모델에 쓰는 정규화 (metadata 의 값과 같다)
@@ -31,8 +32,6 @@ class ImageEmbedder:
     def __init__(self, model_path: str | Path, input_size: int = 224,
                  l2_normalize: bool = True, quantize: bool = False):
         self.model_path = Path(model_path)
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"임베더 파일을 찾지 못했어요: {self.model_path}")
         self.input_size = int(input_size)
         self.l2_normalize = bool(l2_normalize)
         if quantize:
@@ -45,7 +44,8 @@ class ImageEmbedder:
                 "이미지 모델을 돌리려면 LiteRT 가 필요해요:  pip install ai-edge-litert"
             ) from e
 
-        self._it = Interpreter(model_path=str(self.model_path))
+        # 경로가 아니라 바이트로 넘긴다 — 한글 경로에서 깨지지 않게
+        self._it = Interpreter(model_content=read_model(self.model_path))
         self._it.allocate_tensors()
         self._in = self._it.get_input_details()[0]
         self._out = self._it.get_output_details()[0]

@@ -204,7 +204,19 @@ git tag v0.1.0 && git push origin v0.1.0
 - 그래서 `.assetsignore` 와 exe 빌드에서 `python/teachlab/` 만 남긴다.
   통째로 빼면 내보내기가 404 로 실패한다.
 - `python/teachlab/` 에 모듈을 더하면 `lib/pyexport.js` 의 `TEACHLAB_FILES`
-  목록에도 더해야 한다.
+  목록에도 더해야 한다. 안 더하면 내보낸 zip 이 ImportError 로 죽는다.
+
+  ```bash
+  # 목록과 실제 파일이 맞는지 확인
+  ls python/teachlab/*.py | xargs -n1 basename
+  grep -A4 TEACHLAB_FILES lib/pyexport.js
+  ```
+
+- **모델 파일 경로를 C++ 런타임에 문자열로 넘기지 말 것.**
+  `teachlab/modelfile.py` 의 `read_model()` 로 읽어 바이트를 넘긴다.
+  윈도우에서 `C:\Users\...\바탕 화면\...` 같은 한글 경로를 넘기면
+  "Could not open ... The model allocation is null/empty" 로 죽는다.
+  LiteRT 는 `model_content=`, MediaPipe 는 `model_asset_buffer=` 를 쓴다.
 - `requirements.txt` 에는 소스별로 실제 필요한 것만 적는다 (`REQUIREMENTS`).
   이미지는 LiteRT, 나머지는 MediaPipe.
 

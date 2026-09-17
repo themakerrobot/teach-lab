@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teachlab"
-version = "0.3.0"
+version = "0.3.1"
 description = "Teach Lab 에서 가르친 모델(이미지·손·얼굴·포즈·소리)을 파이썬에서 그대로 실행합니다."
 readme = "README.md"
 requires-python = ">=3.9"

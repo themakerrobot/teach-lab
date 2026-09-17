@@ -14,6 +14,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .modelfile import read_model
+
 SOUND_DIM = 521
 SAMPLE_RATE = 16000
 WINDOW_SECONDS = 1.0
@@ -35,12 +37,11 @@ class SoundEmbedder:
 
         self._containers = containers
         self.model_path = Path(model_path)
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"소리 모델을 찾지 못했어요: {self.model_path}")
         self.dim = int(dim)
 
         options = mp_audio.AudioClassifierOptions(
-            base_options=mp_python.BaseOptions(model_asset_path=str(self.model_path)),
+            # 경로가 아니라 바이트로 넘긴다 — 한글 경로에서 깨지지 않게
+            base_options=mp_python.BaseOptions(model_asset_buffer=read_model(self.model_path)),
             running_mode=mp_audio.RunningMode.AUDIO_CLIPS,
             max_results=self.dim,
         )
