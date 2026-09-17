@@ -85,8 +85,7 @@ print(result.label, result.score)
 있어서 기기 안에서 전부 돕니다.
 
 > 웹캠은 거울로 두고 배우기 때문에, 파이썬에서도 웹캠 프레임은
-> `predict_webcam(frame)` 으로 넣어야 방향이 맞습니다. 파이보처럼 거울이 아닌
-> 카메라라면 `predict(frame)` 을 쓰세요.
+> `predict_webcam(frame)` 으로 넣어야 방향이 맞습니다. 거울이 아닌 카메라(로봇 카메라 등)라면 `predict(frame)` 을 쓰세요.
 
 자세한 것은 [`python/README.md`](python/README.md) 를 보세요.
 
