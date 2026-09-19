@@ -120,7 +120,7 @@ class Model:
         return self.predict(frame, bgr=bgr, mirror=self.mirror)
 
     def predict_audio(self, samples: Any, sample_rate: int = 16000) -> Prediction | None:
-        """모노 float32 샘플 한 토막 (소리 소스). 1초 정도가 좋다."""
+        """모노 float32 샘플 한 토막 (소리 소스). 0.975초(15600샘플)면 딱 맞고, 길면 뒤에서 한 창만 쓴다."""
         return self.predict(samples, sample_rate=sample_rate)
 
     def predict_wav(self, path: str | Path) -> Prediction | None:

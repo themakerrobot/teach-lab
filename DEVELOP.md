@@ -50,17 +50,25 @@ css/
 lib/
   nav.js             헤더/탭/전체화면
   i18n.js            한/영 토글 (자매 서비스와 같은 방식)
-  embedder.js        MediaPipe ImageEmbedder 로드 + 전처리 (GPU 실패 시 CPU 폴백)
+  theme.js           강조색 읽기 (캔버스에 그릴 때 CSS 변수 값을 쓴다)
+  tour.js            첫 방문 튜토리얼 (캐릭터 안내)
+  sources.js         소스 5종 정의 · 갈래 · 차원 · 추출기 스펙 · 소리 특징 다듬기
+  embedder.js        MediaPipe ImageEmbedder 로드 + cropTo 전처리 (GPU 실패 시 CPU 폴백)
+  landmarker.js      Hand/Face/Pose Landmarker 로드 + 화면에 그리기
+  features.js        랜드마크 → 특징 벡터 (sense-lab 과 같은 정규화)
+  sound.js           마이크 + YAMNet (MediaPipe Tasks Audio)
   trainer.js         TF.js 분류기 학습 (Dense64-Dropout-Softmax, webgl→cpu)
   classifier.js      저장 형식 + 추론 (TF.js 없이 도는 순수 JS)
   project.js         IndexedDB 저장 + .teachlab.zip 내보내기/불러오기
   pyexport.js        파이썬 내보내기 zip 만들기
+  teachlab_src.js    python/teachlab 소스를 문자열로 심은 것 (tools/gen-teachlab-src.mjs 가 만든다)
   learn.js / exam.js / storage_page.js   페이지 로직
   jszip.min.js
 vendor/
   tasks-vision/      @mediapipe/tasks-vision wasm + vision_bundle.mjs
+  tasks-audio/       @mediapipe/tasks-audio wasm + audio_bundle.mjs
   tfjs/              @tensorflow/tfjs tf.min.js
-models/              mobilenet_v3_small_embedder.tflite (MediaPipe image_embedder)
+models/              mobilenet_v3_small_embedder.tflite · hand/face/pose *.task · yamnet.tflite
 assets/fonts/        Pretendard (셀프호스팅)
 assets/img/          캐릭터·로고·앱 아이콘
 design/              공용 디자인 킷 (maker-ui.css + 미리보기)

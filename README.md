@@ -56,7 +56,7 @@ Sense Lab · 파이보 랩의 자매 서비스로, 화면 규격은 셋이 같�
 | 내보내기 | 받는 것 | 쓰는 곳 |
 |---|---|---|
 | **프로젝트 파일** (`.teachlab.zip`) | 모델 + 예시 + 썸네일 | 다른 컴퓨터의 Teach Lab 에 놓으면 그대로 복원 |
-| **파이썬** (`-python.zip`) | 모델 + 임베더 + 실행 코드 | `pip install teachlab` 후 바로 실행 |
+| **파이썬** (`-python.zip`) | 모델 + 특징 모델 + 실행 코드 | 압축을 풀고 `pip install -r requirements.txt` 후 바로 실행 |
 
 재부팅하면 초기화되는 교실 PC 에서는 꼭 내보내기를 써 두세요.
 
@@ -64,14 +64,15 @@ Sense Lab · 파이보 랩의 자매 서비스로, 화면 규격은 셋이 같�
 
 ```bash
 unzip 과일맞히기-python.zip && cd 과일맞히기-python
-pip install teachlab
+pip install -r requirements.txt
 python predict.py 사진.jpg        # 사진 한 장 분류
 python webcam.py                  # 웹캠으로 실시간 분류
 ```
 
-이미지 모델은 `numpy`·`Pillow`·`LiteRT` 만 받으면 됩니다 (약 110MB).
-TensorFlow 도 MediaPipe 도 필요 없어요. 손·얼굴·포즈·소리 모델은
-`pip install "teachlab[all]"` 로 MediaPipe 까지 받습니다.
+실행 라이브러리 `teachlab/` 은 zip 안에 들어 있어서 따로 받지 않아도 됩니다
+(PyPI 의 `pip install teachlab` 과 같은 코드). 이미지 모델은 `numpy`·`Pillow`·
+`LiteRT` 만 받으면 됩니다 (약 110MB). TensorFlow 도 MediaPipe 도 필요 없어요.
+손·얼굴·포즈·소리 모델의 requirements.txt 에는 MediaPipe 가 들어 있습니다.
 
 ```python
 from teachlab import ImageClassifier
