@@ -48,9 +48,30 @@ jobs:
           name: TeachLab
           path: build/TeachLab.exe
 
+      - name: Release notes from CHANGELOG.md (태그 push 또는 tag 입력 시)
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          # CHANGELOG.md 에서 "### vX.Y.Z — 날짜" 절만 잘라 Release 본문으로 쓴다.
+          # 절이 없으면 본문을 비워 두고 Release 는 그대로 만든다.
+          awk -v tag="$TAG" '
+            /^### / { on = ($2 == tag) ; next }
+            /^## /  { on = 0 }
+            on      { print }
+          ' CHANGELOG.md > build/notes.md
+          if [ -s build/notes.md ]; then
+            printf '\n---\n`TeachLab.exe` 는 사이트 전체를 담은 오프라인 실행 파일입니다. 더블클릭하면 브라우저가 열려요.\n' >> build/notes.md
+          else
+            echo "CHANGELOG.md 에 $TAG 절이 없습니다 — 본문 없이 릴리스합니다"
+          fi
+          cat build/notes.md
+
       - name: Attach to Release (태그 push 또는 tag 입력 시)
         if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
           files: build/TeachLab.exe
           tag_name: ${{ inputs.tag || github.ref_name }}
+          name: ${{ inputs.tag || github.ref_name }}
+          body_path: build/notes.md

@@ -243,7 +243,7 @@ teachlab info <파이썬내보내기>/model
    - `git tag vX.Y.Z && git push origin vX.Y.Z` (태그 푸시가 막힌 환경도 있다)
    - Actions → **Build TeachLab.exe** → Run workflow → `tag` 에 `vX.Y.Z` 입력.
      태그가 없으면 릴리스 액션이 만들어 준다
-4. 만들어진 Release 의 본문에 `CHANGELOG.md` 의 그 절을 붙여 넣는다 (자동 생성 노트는 쓰지 않는다 — 커밋 제목이 한국어 문장이라 그대로 읽혀도 되지만, 사용자 관점으로 고른 줄이 낫다)
+4. Release 본문은 워크플로가 `CHANGELOG.md` 의 `### vX.Y.Z` 절을 잘라 넣는다. 그래서 1번을 빼먹으면 본문이 빈다
 
 ### 파이썬 릴리스 절차
 
