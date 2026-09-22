@@ -267,11 +267,21 @@ teachlab info <파이썬내보내기>/model
 저장소 첫 화면 오른쪽 **About** 은 코드가 아니라 저장소 설정이다 (관리자 권한 · 톱니 아이콘).
 아래로 맞춰 둔다. 바꾸면 여기도 같이 고친다.
 
-- **Description**: `웹캠·마이크로 보여 준 것을 브라우저 안에서 바로 가르치는 어린이용 Teachable Machine — 이미지·손·얼굴·포즈·소리, 파이썬 내보내기`
-- **Website**: 배포 주소 (GitHub Pages 또는 Cloudflare)
-- **Topics**: `teachable-machine` `machine-learning` `mediapipe` `tensorflowjs` `image-classification`
-  `hand-tracking` `pose-estimation` `audio-classification` `education` `kids` `on-device` `browser` `pwa` `korean` `pibo`
-- **Releases** · **Packages** 표시는 켜 두고, Deployments 는 꺼도 된다
+**Description** (그대로 붙여 넣기)
+
+```
+웹캠·마이크로 보여 준 것을 브라우저 안에서 바로 가르치는 어린이용 Teachable Machine — 이미지·손·얼굴·포즈·소리, 파이썬 내보내기
+```
+
+**Website**: 배포 주소 (GitHub Pages 또는 Cloudflare)
+
+**Topics** (쉼표로 나뉘어 있어 한 번에 붙여 넣으면 된다)
+
+```
+teachable-machine, machine-learning, mediapipe, tensorflowjs, image-classification, hand-tracking, pose-estimation, audio-classification, education, kids, on-device, browser, pwa, korean, pibo
+```
+
+**Releases** · **Packages** 표시는 켜 두고, Deployments 는 꺼도 된다.
 
 ## 내보낸 zip 이 PyPI 없이 도는 이유
 
