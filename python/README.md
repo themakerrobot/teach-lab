@@ -64,7 +64,7 @@ print(result.ranked())                # [('사과', 0.97), ...]
 ```python
 m = Model("model")                    # source == 'sound'
 print(m.predict_wav("소리.wav"))       # wav 파일 (표준 라이브러리로 읽습니다)
-print(m.predict_audio(samples, 16000))  # 모노 float32 한 토막 (1초쯤)
+print(m.predict_audio(samples, 16000))  # 모노 float32 한 토막 (0.975초 = 15600샘플이면 딱 맞아요. 길면 뒤에서 한 창만 씁니다)
 ```
 
 OpenCV 프레임(BGR ndarray)을 그대로 넣어도 됩니다.

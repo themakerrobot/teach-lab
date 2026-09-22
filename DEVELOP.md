@@ -6,16 +6,19 @@
 
 - 백엔드 없음 — 전부 정적 파일. 외부 CDN 금지, 라이브러리·모델 전부 셀프호스팅
 - 최초 로드 후 오프라인 동작
-- 코드·README 에 계정명·절대 URL 하드코딩 금지 (조직 이전 대비, 전부 상대경로)
+- 코드에 계정명·절대 URL 하드코딩 금지 (조직 이전 대비, 전부 상대경로).
+  예외는 README 의 사이트 링크·배지뿐이다 — 이전할 때 그곳만 고친다
 - 디자인은 자매 서비스(Sense Lab · 파이보 랩)와 동일 — 공용 규격은 [design/](./design/) 참고.
   `css/maker-ui.css` 는 `design/maker-ui.css` 를 그대로 복사한 것이다. **직접 고치지 말 것.**
   이 서비스 전용 스타일만 `css/app.css` 에 얹는다.
 
 ## 지금 범위
 
-이미지 분류 **한 종만** end-to-end 로 구현되어 있다 (수집 → 학습 → 추론 → 내보내기).
-손·얼굴·소리·포즈는 아직 없다. 입력이 늘어나도 아래 구조는 그대로 두고
-`lib/embedder.js` 자리에 소스별 특징 추출기를 끼우는 방향으로 넓힌다.
+다섯 소스(이미지 · 손 · 얼굴 · 포즈 · 소리)가 전부 end-to-end 로 돈다
+(수집 → 학습 → 추론 → 프로젝트/파이썬 내보내기 → 파이썬 실행).
+소스마다 다른 것은 `lib/sources.js` 의 스펙과 "숫자로 바꾸는" 모듈
+(`embedder.js` · `landmarker.js`+`features.js` · `sound.js`)뿐이고,
+수집·학습·저장·시험은 한 길을 같이 쓴다. 소스를 더할 때도 그 자리에만 끼운다.
 
 ## 실행
 
@@ -217,19 +220,58 @@ teachlab info <파이썬내보내기>/model
 - 캐시 버스팅: 코드 파일만 `?v=N`. 모델·wasm 파일에는 붙이지 않습니다
 - 모든 자산 경로는 상대경로 — 하위 경로(`/teach-lab/`) 서빙에서도 동작합니다
 
-## 오프라인 exe (자매 서비스와 동일)
+## 버전·태그·릴리스
 
-`v*` 태그를 푸시하면 GitHub Actions 가 사이트 전체를 담은 단일
-`TeachLab.exe` 를 빌드해 Release 에 첨부합니다 (인터넷 없이 동작).
+번호가 두 줄이다. 섞지 않는다.
 
-```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
+| 무엇 | 태그 | 번호가 사는 곳 | 올리는 곳 |
+|---|---|---|---|
+| 웹앱 (사이트 · `TeachLab.exe`) | `v0.1.1` | 태그 · Release · `CHANGELOG.md` | GitHub Release |
+| 파이썬 `teachlab` | `py-v0.4.0` | `python/pyproject.toml` · `python/teachlab/__init__.py` · `CHANGELOG.md` | PyPI |
+
+- 사이트는 `release` 브랜치가 곧 배포라 태그가 없어도 늘 최신이다. `v*` 태그는
+  "이 시점의 exe 와 릴리스 노트"를 남기는 표시다. **사용자에게 보이는 변화가 쌓이면** 하나 끊는다.
+- 파이썬은 PyPI 에 같은 번호를 두 번 올릴 수 없다. 올리기 전에 반드시 번호를 올린다.
+- `MAJOR.MINOR.PATCH`: 고치기만 했으면 PATCH, 기능이 늘었으면 MINOR, 저장 형식·API 가 깨지면 MAJOR.
+  파이썬은 `project.json` 을 읽는 쪽이라 **저장 형식이 바뀌면 둘 다 올린다.**
+
+### 웹앱 릴리스 절차
+
+1. `CHANGELOG.md` 의 "아직 안 올린 것" 을 새 `vX.Y.Z — 날짜` 로 바꾸고 커밋
+2. `main` 푸시 → CI 초록 확인 → `release` 에 같은 커밋 푸시 (Cloudflare 자동 배포)
+3. exe + Release: 둘 중 하나
+   - `git tag vX.Y.Z && git push origin vX.Y.Z` (태그 푸시가 막힌 환경도 있다)
+   - Actions → **Build TeachLab.exe** → Run workflow → `tag` 에 `vX.Y.Z` 입력.
+     태그가 없으면 릴리스 액션이 만들어 준다
+4. 만들어진 Release 의 본문에 `CHANGELOG.md` 의 그 절을 붙여 넣는다 (자동 생성 노트는 쓰지 않는다 — 커밋 제목이 한국어 문장이라 그대로 읽혀도 되지만, 사용자 관점으로 고른 줄이 낫다)
+
+### 파이썬 릴리스 절차
+
+1. `python/pyproject.toml` 과 `python/teachlab/__init__.py` 의 버전을 같이 올린다
+2. `node tools/gen-teachlab-src.mjs` 로 `lib/teachlab_src.js` 를 다시 만든다 (CI 가 검사한다)
+3. `CHANGELOG.md` 파이썬 절에 적고 커밋 · `main` 푸시
+4. Actions → **Publish teachlab to PyPI** → Run workflow (target `pypi`) 또는 `py-vX.Y.Z` 태그 푸시.
+   자세한 것은 아래 "파이썬 패키지 배포 (PyPI)"
+
+### 오프라인 exe (자매 서비스와 동일)
+
+`v*` 태그(또는 workflow_dispatch 의 `tag` 입력)로 GitHub Actions 가 사이트 전체를 담은 단일
+`TeachLab.exe` 를 빌드해 Release 에 첨부한다 (인터넷 없이 동작).
 
 - 구성: `.github/workflows/build-exe.yml` + `tools/portable/` (Go embed 서버)
-- 서버는 `.wasm`/`.task`/`.tflite`/`.mjs` MIME 을 명시 등록합니다
-- Actions 탭에서 workflow_dispatch 로 수동 빌드도 가능합니다
-- 사이트가 약 66MB 라 exe 는 약 75MB 가 됩니다 (모델·wasm 이 대부분)
+- 서버는 `.wasm`/`.task`/`.tflite`/`.mjs` MIME 을 명시 등록한다
+- 사이트가 약 66MB 라 exe 는 약 75MB 가 된다 (모델·wasm 이 대부분)
+
+## 저장소 About (GitHub)
+
+저장소 첫 화면 오른쪽 **About** 은 코드가 아니라 저장소 설정이다 (관리자 권한 · 톱니 아이콘).
+아래로 맞춰 둔다. 바꾸면 여기도 같이 고친다.
+
+- **Description**: `웹캠·마이크로 보여 준 것을 브라우저 안에서 바로 가르치는 어린이용 Teachable Machine — 이미지·손·얼굴·포즈·소리, 파이썬 내보내기`
+- **Website**: 배포 주소 (GitHub Pages 또는 Cloudflare)
+- **Topics**: `teachable-machine` `machine-learning` `mediapipe` `tensorflowjs` `image-classification`
+  `hand-tracking` `pose-estimation` `audio-classification` `education` `kids` `on-device` `browser` `pwa` `korean` `pibo`
+- **Releases** · **Packages** 표시는 켜 두고, Deployments 는 꺼도 된다
 
 ## 내보낸 zip 이 PyPI 없이 도는 이유
 
@@ -308,8 +350,9 @@ python -m twine check dist/*
 내보낸 zip 은 `teachlab/` 소스를 품고 있어서 PyPI 배포와 무관하게 돌아갑니다
 (바로 위 절 참고). PyPI 배포는 `pip install teachlab` 로 쓰고 싶은 사람을 위한 것입니다.
 
-## 화면 캡처 (docs/manual)
+## 화면 캡처 (docs/manual · docs/img)
 
-설명서 그림은 실제 웹캠 없이 만듭니다. 가짜 카메라에 합성 장면(Y4M)을
-넣고 Playwright 로 찍은 뒤, 번호 배지를 그려 넣습니다.
-장면과 번호 위치를 바꾸려면 캡처 스크립트를 다시 돌리세요.
+설명서 그림(`docs/manual`, 번호 배지 있음)과 README 그림(`docs/img`, 깨끗한 화면)은
+실제 웹캠 없이 만든다. 가짜 카메라에 합성 장면(Y4M)을 넣고 Playwright 로 찍는다.
+스크립트는 `tools/shots/` 에 있고, 장면 파일은 크기 때문에 저장소에 넣지 않는다 —
+`tools/shots/README.md` 대로 `tools/shots/scene/` 을 만들고 돌린다.
