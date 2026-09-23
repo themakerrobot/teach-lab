@@ -9,7 +9,7 @@
 - 코드에 계정명·절대 URL 하드코딩 금지 (조직 이전 대비, 전부 상대경로).
   예외는 README 의 사이트 링크·배지뿐이다 — 이전할 때 그곳만 고친다
 - 디자인은 자매 서비스와 동일 — 공용 규격은 **[themakerrobot/themaker-ui](https://github.com/themakerrobot/themaker-ui)** 한 곳에 있다.
-  `css/maker-ui.css` 는 그 저장소 `maker-ui.css` 의 **복사본이다. 직접 고치지 말 것.**
+  `css/themaker-ui.css` 는 그 저장소 `themaker-ui.css` 의 **복사본이다. 직접 고치지 말 것.**
   고쳐야 하면 킷을 고치고 태그를 올린 뒤 여기로 다시 복사한다 (CI 가 어긋남을 잡는다).
   이 서비스 전용 스타일만 `css/app.css` 에 얹는다. `assets/fonts/` 도 킷과 같은 파일이다.
 
@@ -48,7 +48,7 @@ Cloudflare 배포용 헤더는 `_headers` 에 있습니다.
 ```
 index.html / test.html / storage.html
 css/
-  maker-ui.css       공용 디자인 킷 복사본 (themakerrobot/themaker-ui — 수정 금지)
+  themaker-ui.css    공용 디자인 킷 복사본 (themakerrobot/themaker-ui — 수정 금지)
   app.css            이 서비스 전용
   all.min.css        Font Awesome
 lib/
