@@ -141,10 +141,6 @@
 
 /* ── 헤더 보조 (공통 규격에 없는 것) ── */
 #engine{font-size:11px;color:var(--ink3);font-weight:600;white-space:nowrap}
-.hbtn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;
-  border:1px solid var(--line);border-radius:var(--r-s);background:var(--panel);color:var(--ink2);
-  font-size:13px;cursor:pointer;transition:all .12s;flex-shrink:0}
-.hbtn:hover{border-color:var(--acc);color:var(--acc-ink);background:var(--acc-soft)}
 
 /* 표 안의 링크형 버튼 — .db 를 <a> 에 쓸 때 밑줄을 없앤다 */
 a.db{text-decoration:none}

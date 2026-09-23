@@ -8,9 +8,10 @@
 - 최초 로드 후 오프라인 동작
 - 코드에 계정명·절대 URL 하드코딩 금지 (조직 이전 대비, 전부 상대경로).
   예외는 README 의 사이트 링크·배지뿐이다 — 이전할 때 그곳만 고친다
-- 디자인은 자매 서비스(Sense Lab · 파이보 랩)와 동일 — 공용 규격은 [design/](./design/) 참고.
-  `css/maker-ui.css` 는 `design/maker-ui.css` 를 그대로 복사한 것이다. **직접 고치지 말 것.**
-  이 서비스 전용 스타일만 `css/app.css` 에 얹는다.
+- 디자인은 자매 서비스와 동일 — 공용 규격은 **[themakerrobot/maker-ui](https://github.com/themakerrobot/maker-ui)** 한 곳에 있다.
+  `css/maker-ui.css` 는 그 저장소 `maker-ui.css` 의 **복사본이다. 직접 고치지 말 것.**
+  고쳐야 하면 킷을 고치고 태그를 올린 뒤 여기로 다시 복사한다 (CI 가 어긋남을 잡는다).
+  이 서비스 전용 스타일만 `css/app.css` 에 얹는다. `assets/fonts/` 도 킷과 같은 파일이다.
 
 ## 지금 범위
 
@@ -47,7 +48,7 @@ Cloudflare 배포용 헤더는 `_headers` 에 있습니다.
 ```
 index.html / test.html / storage.html
 css/
-  maker-ui.css       공용 디자인 킷 (design/maker-ui.css 복사본 — 수정 금지)
+  maker-ui.css       공용 디자인 킷 복사본 (themakerrobot/maker-ui — 수정 금지)
   app.css            이 서비스 전용
   all.min.css        Font Awesome
 lib/
@@ -74,7 +75,6 @@ vendor/
 models/              mobilenet_v3_small_embedder.tflite · hand/face/pose *.task · yamnet.tflite
 assets/fonts/        Pretendard (셀프호스팅)
 assets/img/          캐릭터·로고·앱 아이콘
-design/              공용 디자인 킷 (maker-ui.css + 미리보기)
 python/              PyPI 패키지 `teachlab`
 ```
 
